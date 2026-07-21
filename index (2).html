@@ -1,0 +1,2044 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Grupo Delgra — Panel Financiero</title>
+<style>
+:root{
+  --bg:#f7f7f5;
+  --bg2:#ffffff;
+  --card:#ffffff;
+  --card-border:#e3e1db;
+  --ink:#1c2126;
+  --ink-dim:#7c8188;
+  --mxn:#b5762a;
+  --usd:#1c7a99;
+  --green:#2f9457;
+  --white-status:#9aa0a8;
+  --yellow:#a9821f;
+  --red:#c14a30;
+  --mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;}
+body{padding-bottom:80px;}
+
+/* ---------- Password gate ---------- */
+#gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;flex-direction:column;padding:24px;}
+#gate .panel{width:100%;max-width:340px;text-align:center;}
+#gate .badge{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:13px;color:var(--mxn);border:1px solid var(--card-border);border-radius:999px;padding:6px 14px;margin-bottom:22px;letter-spacing:.04em;}
+#gate h1{font-size:20px;margin:0 0 6px;font-weight:600;}
+#gate p{color:var(--ink-dim);font-size:14px;margin:0 0 22px;}
+#gate input{width:100%;background:var(--card);border:1px solid var(--card-border);color:var(--ink);font-size:18px;letter-spacing:.3em;text-align:center;padding:14px;border-radius:10px;font-family:var(--mono);}
+#gate input:focus{outline:2px solid var(--mxn);border-color:var(--mxn);}
+#gate button{width:100%;margin-top:12px;background:var(--mxn);color:#1a1206;border:none;font-weight:700;font-size:15px;padding:14px;border-radius:10px;}
+#gate .err{color:var(--red);font-size:13px;margin-top:10px;min-height:18px;}
+
+/* ---------- Top bar ---------- */
+header{position:sticky;top:0;z-index:10;background:rgba(247,247,245,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--card-border);padding:14px 16px 10px;}
+header .titlebar{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px;}
+header h1{font-size:15px;font-weight:700;margin:0;letter-spacing:.01em;}
+header .updated{font-size:11px;color:var(--ink-dim);font-family:var(--mono);}
+header .sub{font-size:12px;color:var(--ink-dim);}
+.sync-bar{display:flex;align-items:center;gap:7px;margin-top:9px;font-size:11px;color:var(--ink-dim);flex-wrap:wrap;}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--ink-dim);flex:0 0 auto;}
+.sync-dot.ok{background:var(--green);}
+.sync-dot.err{background:var(--red);}
+.sync-dot.loading{background:var(--mxn);animation:pulse 1.2s infinite ease-in-out;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+.sync-btn{background:var(--card);border:1px solid var(--card-border);color:var(--ink);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:999px;}
+#syncText{flex:1;min-width:0;}
+
+/* ---------- Tabs ---------- */
+nav.tabs{display:flex;gap:6px;overflow-x:auto;padding:12px 16px 0;background:var(--bg);position:sticky;top:56px;z-index:9;scrollbar-width:none;}
+nav.tabs::-webkit-scrollbar{display:none;}
+nav.tabs button{flex:0 0 auto;background:transparent;border:1px solid var(--card-border);color:var(--ink-dim);font-size:13px;font-weight:600;padding:9px 14px;border-radius:999px;white-space:nowrap;}
+nav.tabs button.active{background:var(--mxn);border-color:var(--mxn);color:#1a1206;}
+
+main{padding:18px 16px 30px;max-width:640px;margin:0 auto;}
+.page{display:none;}
+.page.active{display:block;animation:fade .25s ease;}
+@keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+section.block{margin-bottom:26px;}
+section.block h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-dim);margin:0 0 10px;font-weight:700;}
+
+/* ---------- KPI cards ---------- */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.kpi{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:14px;}
+.kpi.full{grid-column:1 / -1;}
+.kpi .label{font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+.kpi .value{font-family:var(--mono);font-size:20px;font-weight:700;line-height:1.15;}
+.kpi .value.mxn{color:var(--mxn);}
+.kpi .value.usd{color:var(--usd);}
+.kpi .value.neutral{color:var(--ink);}
+.kpi .foot{font-size:11px;color:var(--ink-dim);margin-top:4px;}
+
+/* TC ticker */
+.tc-ticker{display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--card-border);border-radius:999px;padding:6px 12px;text-transform:none;letter-spacing:normal;}
+.tc-ticker .dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex:0 0 auto;}
+.tc-ticker .txt{font-size:10.5px;color:var(--ink-dim);}
+.tc-ticker .num{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--mxn);}
+
+/* progress bar (ingresado vs proyectado) */
+.progress-wrap{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+.progress-track{height:10px;border-radius:6px;background:#eeece5;overflow:hidden;margin:10px 0 6px;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--mxn),var(--usd));border-radius:6px;}
+.progress-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-dim);font-family:var(--mono);}
+
+/* status badges */
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.02em;}
+.badge.verde{background:rgba(63,174,106,.15);color:var(--green);border:1px solid rgba(63,174,106,.4);}
+.badge.blanco{background:rgba(216,221,226,.1);color:var(--white-status);border:1px solid rgba(216,221,226,.35);}
+.badge.amarillo{background:rgba(217,182,74,.15);color:var(--yellow);border:1px solid rgba(217,182,74,.4);}
+.badge.azul{background:rgba(59,167,201,.15);color:var(--usd);border:1px solid rgba(59,167,201,.4);}
+.badge.rojo{background:rgba(193,74,48,.12);color:var(--red);border:1px solid rgba(193,74,48,.4);}
+
+/* client cards */
+.client-card{background:var(--card);border:1px solid var(--card-border);border-left:3px solid var(--card-border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;}
+.client-card.st-verde{border-left-color:var(--green);}
+.client-card.st-blanco{border-left-color:var(--white-status);}
+.client-card.st-amarillo{border-left-color:var(--yellow);}
+.client-card.st-atrasado{border-left-color:var(--red);}
+.client-card .info{min-width:0;}
+.client-card .name{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.client-card .code{font-size:11px;color:var(--ink-dim);font-family:var(--mono);margin-top:2px;}
+.client-card .amt{text-align:right;flex:0 0 auto;}
+.client-card .amt .n{font-family:var(--mono);font-weight:700;font-size:14px;}
+.client-card .amt .n.usd-color{color:var(--usd);}
+.client-card .amt .n.mxn-color{color:var(--mxn);}
+
+.filter-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+.filter-row button{background:var(--card);border:1px solid var(--card-border);color:var(--ink-dim);font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:999px;}
+.filter-row button.on{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+
+/* kanban columns por estado */
+.kanban{display:grid;grid-template-columns:repeat(3,minmax(200px,1fr));gap:10px;overflow-x:auto;padding-bottom:6px;}
+.kan-col{min-width:0;}
+.kan-col .kan-head{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:8px 4px;color:var(--ink-dim);}
+.kan-col .kan-head .dot{width:8px;height:8px;border-radius:50%;}
+.kan-col .kan-count{margin-left:auto;background:var(--card-border);color:var(--ink);font-size:10px;padding:1px 7px;border-radius:999px;font-weight:700;}
+.kan-card{background:var(--card);border:1px solid var(--card-border);border-radius:10px;padding:9px 10px;margin-bottom:7px;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+.kan-card .name{font-size:12px;font-weight:700;line-height:1.25;margin-bottom:3px;}
+.kan-card .code{font-size:10px;color:var(--ink-dim);font-family:var(--mono);margin-bottom:5px;}
+.kan-card .amt{font-family:var(--mono);font-size:13px;font-weight:700;}
+.kan-card .amt.usd-color{color:var(--usd);}
+.kan-card .amt.mxn-color{color:var(--mxn);}
+.kan-card .usd-tag{display:inline-block;margin-top:4px;font-size:9px;font-weight:700;color:var(--usd);background:rgba(28,122,153,.1);border:1px solid rgba(28,122,153,.35);padding:1px 6px;border-radius:6px;}
+@media (max-width:560px){ .kanban{grid-template-columns:1fr;} }
+
+/* table */
+table.simple{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.simple th{text-align:left;color:var(--ink-dim);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--card-border);}
+table.simple td{padding:9px 8px;border-bottom:1px solid #1c2732;font-family:var(--mono);}
+table.simple tr:last-child td{border-bottom:none;}
+table.simple td.name{font-family:var(--sans);}
+.anomaly{color:var(--red);font-weight:700;}
+.anomaly-tag{font-size:9.5px;background:rgba(201,88,63,.15);color:var(--red);padding:1px 6px;border-radius:6px;margin-left:6px;font-family:var(--sans);}
+
+/* bars for monthly chart */
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:140px;padding:10px 4px 0;border-bottom:1px solid var(--card-border);}
+.bar-chart .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
+.bar-chart .bar{width:100%;max-width:22px;border-radius:4px 4px 0 0;background:var(--mxn);position:relative;min-height:2px;}
+.bar-chart .bar.anom{background:var(--red);}
+.bar-chart .lbl{font-size:9px;color:var(--ink-dim);margin-top:6px;font-family:var(--mono);}
+.bar-chart .val{font-size:8.5px;color:var(--ink-dim);font-family:var(--mono);margin-bottom:3px;white-space:nowrap;}
+
+.nomina-emp{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #1c2732;font-size:13px;}
+.nomina-emp:last-child{border-bottom:none;}
+.nomina-emp .nom{font-weight:600;}
+.nomina-emp .note{font-size:10.5px;color:var(--yellow);display:block;margin-top:2px;}
+.nomina-emp .tot{font-family:var(--mono);font-weight:700;color:var(--mxn);}
+
+.card-plain{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:14px;margin-bottom:12px;}
+.period-select{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none;}
+.period-select::-webkit-scrollbar{display:none;}
+.period-select button{flex:0 0 auto;background:var(--card);border:1px solid var(--card-border);color:var(--ink-dim);font-size:11.5px;font-weight:600;padding:7px 12px;border-radius:10px;font-family:var(--mono);white-space:nowrap;}
+.period-select button.on{background:var(--mxn);color:#1a1206;border-color:var(--mxn);}
+
+.legend-row{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--ink-dim);margin-top:14px;}
+.legend-row .li{display:flex;align-items:center;gap:5px;}
+.legend-row .dot{width:8px;height:8px;border-radius:50%;}
+
+.empty{color:var(--ink-dim);font-size:13px;text-align:center;padding:24px 0;}
+
+/* ---------- Donut charts (Resumen) ---------- */
+.donut-card{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);cursor:pointer;transition:transform .12s ease, box-shadow .12s ease;}
+.donut-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.08);transform:translateY(-1px);}
+.donut-card:active{transform:translateY(0);}
+.donut-row{display:flex;gap:18px;align-items:center;}
+.donut-box{position:relative;width:118px;height:118px;flex:0 0 auto;}
+.donut-box .ring{width:100%;height:100%;border-radius:50%;}
+.donut-box .hole{position:absolute;inset:19px;background:var(--card);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px var(--card-border);}
+.donut-box .hole .pct{font-family:var(--mono);font-weight:800;font-size:19px;line-height:1;}
+.donut-box .hole .sub{font-size:9px;color:var(--ink-dim);text-align:center;margin-top:3px;line-height:1.2;}
+.donut-legend{display:flex;flex-direction:column;gap:8px;flex:1;min-width:0;}
+.donut-legend .item{display:flex;align-items:center;gap:7px;font-size:12.5px;}
+.donut-legend .item .sw{width:9px;height:9px;border-radius:3px;flex:0 0 auto;}
+.donut-legend .item .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.donut-legend .item .amt{margin-left:auto;font-family:var(--mono);font-weight:700;font-size:12px;flex:0 0 auto;padding-left:8px;}
+.donut-tap{font-size:10.5px;color:var(--ink-dim);margin-top:12px;display:flex;align-items:center;gap:4px;}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<!-- ============ PASSWORD GATE ============ -->
+<div id="gate">
+  <div class="panel">
+    <div class="badge">🔒 GRUPO DELGRA</div>
+    <h1>Panel Financiero</h1>
+    <p>Ingresa la contraseña para ver el reporte</p>
+    <input id="pw" type="password" inputmode="numeric" placeholder="••••••" maxlength="20" autofocus>
+    <button onclick="tryUnlock()">Entrar</button>
+    <div class="err" id="pwErr"></div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" style="display:none;">
+<header>
+  <div class="titlebar">
+    <h1>Grupo Delgra</h1>
+    <span class="updated" id="updatedAt"></span>
+  </div>
+  <div class="sub" id="semanaLabel"></div>
+  <div id="syncBar" class="sync-bar">
+    <span id="syncDot" class="sync-dot"></span>
+    <span id="syncText">Conectando con el Excel…</span>
+    <button id="syncRetryBtn" class="sync-btn" onclick="init()" style="display:none;">Reintentar</button>
+    <button id="syncUploadBtn" class="sync-btn" onclick="document.getElementById('manualFile').click()">Subir Excel</button>
+    <input type="file" id="manualFile" accept=".xlsx" style="display:none;">
+  </div>
+</header>
+
+<nav class="tabs">
+  <button data-page="resumen" class="active">Resumen</button>
+  <button data-page="ingresos">Ingresos</button>
+  <button data-page="otros">Constructora</button>
+  <button data-page="bodegas">Bodegas</button>
+  <button data-page="nomina">Nómina</button>
+  <button data-page="historico">Histórico</button>
+</nav>
+
+<main>
+
+  <!-- ===================== PÁGINA: RESUMEN ===================== -->
+  <div class="page active" id="page-resumen">
+
+    <section class="block">
+      <h2 style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Ingresos de julio (lo que ya entró)</span>
+        <span class="tc-ticker"><span class="dot"></span><span class="txt">TC</span><span class="num" id="tcActual">—</span></span>
+      </h2>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="label">Total en pesos</div>
+          <div class="value mxn" id="kpiIngresoMN">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Total en dólares</div>
+          <div class="value usd" id="kpiIngresoUSD">—</div>
+        </div>
+        <div class="kpi full">
+          <div class="label">Suma total del mes (todo convertido a MXN)</div>
+          <div class="value neutral" id="kpiIngresoTotalMN">—</div>
+        </div>
+        <div class="kpi full">
+          <div class="label">Suma total del mes (todo convertido a USD)</div>
+          <div class="value usd" id="kpiIngresoTotalUSD">—</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Falta por cobrar (semana actual)</h2>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="label">Pendiente en pesos</div>
+          <div class="value mxn" id="kpiPendMN">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Pendiente en dólares</div>
+          <div class="value usd" id="kpiPendUSD">—</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Proyección del mes si todos pagaran</h2>
+      <div class="donut-card" onclick="goToPage('ingresos')">
+        <div class="donut-row">
+          <div class="donut-box" id="donutIngreso"></div>
+          <div class="donut-legend" id="donutIngresoLegend"></div>
+        </div>
+        <div class="kpi-grid" style="margin-top:14px;">
+          <div class="kpi" style="border:none;padding:0;">
+            <div class="label">Ingreso esperado total</div>
+            <div class="value mxn" id="kpiProyMN">—</div>
+          </div>
+          <div class="kpi" style="border:none;padding:0;">
+            <div class="label">Equivalente en USD</div>
+            <div class="value usd" id="kpiProyUSD">—</div>
+          </div>
+        </div>
+        <div class="donut-tap">👆 Toca para ver el detalle en Ingresos</div>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>¿Quién va a pagar este mes?</h2>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="label">Deben mes en curso</div>
+          <div class="value neutral" id="kpiPersonasMesCurso">—</div>
+          <div class="foot">personas / clientes</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Atrasados</div>
+          <div class="value" style="color:var(--red);" id="kpiPersonasAtrasado">—</div>
+          <div class="foot">deben más de 1 mes</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Flujo de efectivo (posición actual)</h2>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="label">Saldo en bancos MXN</div>
+          <div class="value mxn" id="kpiSaldoMN">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Saldo en bancos USD</div>
+          <div class="value usd" id="kpiSaldoUSD">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Cuentas por pagar</div>
+          <div class="value neutral" id="kpiCxpMN">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Total general disponible</div>
+          <div class="value neutral" id="kpiTotalGeneral">—</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Estado de bodegas — resumen</h2>
+      <div class="donut-card" onclick="goToPage('bodegas')">
+        <div class="donut-row">
+          <div class="donut-box" id="donutBodegas"></div>
+          <div class="donut-legend" id="donutBodegasLegend"></div>
+        </div>
+        <div class="donut-tap">👆 Toca para ver el detalle por bodega</div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ===================== PÁGINA: INGRESOS ===================== -->
+  <div class="page" id="page-ingresos">
+    <section class="block">
+      <h2>Resumen de julio</h2>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="label">Ya cobrado <span id="nPagado"></span></div>
+          <div class="value mxn" id="kpiCobradoMN">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Aún deben <span id="nPendiente"></span></div>
+          <div class="value neutral" id="kpiDebenMN">—</div>
+        </div>
+        <div class="kpi full">
+          <div class="label">Total facturado del mes</div>
+          <div class="value neutral" id="kpiFacturadoMN">—</div>
+        </div>
+      </div>
+    </section>
+    <section class="block">
+      <h2>Facturación de julio 2026 — detalle</h2>
+      <p style="font-size:11.5px;color:var(--ink-dim);margin:-4px 0 12px;">Verde = ya pagó · Blanco = aún debe el total mostrado</p>
+      <div id="facturasList"></div>
+    </section>
+  </div>
+
+  <!-- ===================== PÁGINA: BODEGAS ===================== -->
+  <div class="page" id="page-bodegas">
+    <section class="block">
+      <h2>Clientes por bodega</h2>
+      <div class="kanban" id="bodegaKanban"></div>
+      <div class="legend-row">
+        <div class="li"><span class="dot" style="background:var(--green)"></span>Verde = ya pagó</div>
+        <div class="li"><span class="dot" style="background:var(--white-status)"></span>Blanco = debe mes en curso</div>
+        <div class="li"><span class="dot" style="background:var(--red)"></span>Rojo = atrasado (más de 1 mes)</div>
+        <div class="li"><span class="dot" style="background:var(--usd)"></span>Azul = paga en dólares</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== PÁGINA: OTROS INGRESOS ===================== -->
+  <div class="page" id="page-otros">
+    <section class="block">
+      <h2>Constructora</h2>
+      <p style="font-size:12px;color:var(--ink-dim);margin:-4px 0 14px;">Ingresos por actividad de construcción, fuera de la renta de bodegas. Los montos abajo son <strong>pendientes por cobrar</strong>, no dinero ya recibido.</p>
+      <div id="otrosList"></div>
+    </section>
+  </div>
+
+
+  <!-- ===================== PÁGINA: NOMINA ===================== -->
+  <div class="page" id="page-nomina">
+    <section class="block">
+      <h2>Nómina por periodo</h2>
+      <div class="period-select" id="periodSelect"></div>
+      <div class="card-plain">
+        <div class="kpi" style="border:none;padding:0;margin-bottom:14px;">
+          <div class="label">Total del periodo</div>
+          <div class="value mxn" id="nominaTotal">—</div>
+        </div>
+        <div id="nominaEmpleados"></div>
+      </div>
+    </section>
+    <section class="block">
+      <h2>Tendencia — últimos periodos</h2>
+      <div class="card-plain"><div class="bar-chart" id="nominaChart"></div></div>
+    </section>
+  </div>
+
+  <!-- ===================== PÁGINA: HISTORICO ===================== -->
+  <div class="page" id="page-historico">
+    <section class="block">
+      <h2>Total del año 2026</h2>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="label">Ganado en el año (MXN)</div>
+          <div class="value mxn" id="kpiAnualMN">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Ganado en el año (USD)</div>
+          <div class="value usd" id="kpiAnualUSD">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Promedio mensual (MXN)</div>
+          <div class="value neutral" id="kpiPromedioMN">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Promedio mensual (USD)</div>
+          <div class="value neutral" id="kpiPromedioUSD">—</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Traspaso mensual México → Wells Fargo</h2>
+      <div class="kpi full" style="background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:14px;">
+        <div class="label">Monto fijo mensual</div>
+        <div class="value usd">$12,000 USD</div>
+        <div class="foot">Cifra manual — se conectará al Excel cuando esté el link en vivo</div>
+      </div>
+    </section>
+    <section class="block">
+      <h2>Ingreso total mensual 2026 (MXN)</h2>
+      <div class="card-plain"><div class="bar-chart" id="histChart"></div></div>
+    </section>
+    <section class="block">
+      <h2>Promedio mensual — detección de anomalías</h2>
+      <div class="card-plain" style="overflow-x:auto;">
+        <table class="simple" id="histTable"></table>
+      </div>
+      <div class="legend-row"><div class="li"><span class="anomaly-tag">▲ inusual</span> = se desvía más del 40% del promedio del año</div></div>
+    </section>
+  </div>
+
+</main>
+</div>
+
+<script>
+/* ===================== DATOS (embebidos desde el Excel) ===================== */
+let DATA = {
+ "generado": "2026-07-16T23:07:30.571225",
+ "mes_actual": "JULIO",
+ "months2026": [
+  {
+   "mes": "ENERO",
+   "usd": 3521.33,
+   "tc": 18,
+   "usd_en_mn": 63383.94,
+   "mn": 933671.6399999999,
+   "total_mn": 997055.5799999998,
+   "fact_usd": 56281.15000000001,
+   "fact_mn": 81719.48
+  },
+  {
+   "mes": "FEBRERO",
+   "usd": 3521.33,
+   "tc": 17.4,
+   "usd_en_mn": 61271.14199999999,
+   "mn": 380297.71,
+   "total_mn": 441568.852,
+   "fact_usd": 24695.110000000004,
+   "fact_mn": 88635.18299999999
+  },
+  {
+   "mes": "MARZO",
+   "usd": 3521.33,
+   "tc": 17.5,
+   "usd_en_mn": 61623.275,
+   "mn": 412615.94999999995,
+   "total_mn": 474239.225,
+   "fact_usd": 23037.11,
+   "fact_mn": 101179.65299999999
+  },
+  {
+   "mes": "ABRIL",
+   "usd": 20201.33,
+   "tc": 17.32,
+   "usd_en_mn": 349887.03560000006,
+   "mn": 471710.04,
+   "total_mn": 821597.0756000001,
+   "fact_usd": 39579.55,
+   "fact_mn": 83683.173
+  },
+  {
+   "mes": "MAYO",
+   "usd": 20201.033,
+   "tc": 17.35,
+   "usd_en_mn": 350487.92255,
+   "mn": 405851.78549999994,
+   "total_mn": 756339.70805,
+   "fact_usd": 38151.11000000001,
+   "fact_mn": 42231.163
+  },
+  {
+   "mes": "JUNIO",
+   "usd": 20201.33,
+   "tc": 17.33,
+   "usd_en_mn": 350089.0489,
+   "mn": 451886.34,
+   "total_mn": 801975.3889,
+   "fact_usd": 48287.15000000001,
+   "fact_mn": 87939.803
+  },
+  {
+   "mes": "JULIO",
+   "usd": 11861.33,
+   "tc": 17.25,
+   "usd_en_mn": 204607.9425,
+   "mn": 241786.74,
+   "total_mn": 446394.6825,
+   "fact_usd": 22349.150000000005,
+   "fact_mn": 70573.023
+  },
+  {
+   "mes": "AGOSTO",
+   "usd": 0,
+   "tc": null,
+   "usd_en_mn": 0,
+   "mn": 0,
+   "total_mn": 0,
+   "fact_usd": 0,
+   "fact_mn": 0
+  },
+  {
+   "mes": "SEPTIEMBRE",
+   "usd": 0,
+   "tc": null,
+   "usd_en_mn": 0,
+   "mn": 0,
+   "total_mn": 0,
+   "fact_usd": 0,
+   "fact_mn": 0
+  },
+  {
+   "mes": "OCTUBRE",
+   "usd": 0,
+   "tc": null,
+   "usd_en_mn": 0,
+   "mn": 0,
+   "total_mn": 0,
+   "fact_usd": 0,
+   "fact_mn": 0
+  },
+  {
+   "mes": "NOVIEMBRE",
+   "usd": 0,
+   "tc": null,
+   "usd_en_mn": 0,
+   "mn": 0,
+   "total_mn": 0,
+   "fact_usd": 0,
+   "fact_mn": 0
+  },
+  {
+   "mes": "DICIEMBRE",
+   "usd": 0,
+   "tc": null,
+   "usd_en_mn": 0,
+   "mn": 0,
+   "total_mn": 0,
+   "fact_usd": 0,
+   "fact_mn": 0
+  }
+ ],
+ "posicion_general": {
+  "cxc_mn": 486721.94999999995,
+  "cxc_usd": 9657.310000000001,
+  "cxc_usd_en_mn": 164174.27000000002,
+  "cxp_mn": 228617.22,
+  "cxp_usd": 0,
+  "saldo_bancos_mn": 259641.65,
+  "saldo_bancos_usd": 23806.100000000002,
+  "saldo_bancos_usd_en_mn": 404703.7,
+  "total_general_mn": 1086624.35,
+  "tc_referencia": 17.25
+ },
+ "semana_label": "17 al 23  DE JULIO   DE 2026",
+ "bodegas": [
+  {
+   "cliente": "WURTH INDUSTRY",
+   "codigo": "CIP-1",
+   "monto": 0.0,
+   "moneda": "USD",
+   "estado": "verde"
+  },
+  {
+   "cliente": "HISCOMEX SA DE CV",
+   "codigo": "CIP-2",
+   "monto": 0.0,
+   "moneda": "USD",
+   "estado": "verde"
+  },
+  {
+   "cliente": "NOVACAB",
+   "codigo": "CIP-3",
+   "monto": 0.0,
+   "moneda": "USD",
+   "estado": "verde"
+  },
+  {
+   "cliente": "FLEXIBOLSAS",
+   "codigo": "CIP-14 b 3 y 4",
+   "monto": 1668.0,
+   "moneda": "USD",
+   "estado": "mes_en_curso"
+  },
+  {
+   "cliente": "OSCAR REYES DIAZ",
+   "codigo": "CIP-6 B1 Y2",
+   "monto": 0.0,
+   "moneda": "USD",
+   "estado": "verde"
+  },
+  {
+   "cliente": "KATHYA VAZQUEZ",
+   "codigo": "CIP-6 B1 Y3",
+   "monto": 0.0,
+   "moneda": "USD",
+   "estado": "verde"
+  },
+  {
+   "cliente": "NANCY KARINA",
+   "codigo": "CIP-6 B4",
+   "monto": 0.0,
+   "moneda": "USD",
+   "estado": "verde"
+  },
+  {
+   "cliente": "CONSTRUOPERACIONES",
+   "codigo": "CIP-6 B5",
+   "monto": 0.0,
+   "moneda": "USD",
+   "estado": "verde"
+  },
+  {
+   "cliente": "JUAN ANTONIO HERNANDEZ",
+   "codigo": "CIP-6 B6",
+   "monto": 1026.0,
+   "moneda": "USD",
+   "estado": "mes_en_curso"
+  },
+  {
+   "cliente": "ISABELLA CELAYA (BURRITO)",
+   "codigo": "CIP-6 B7",
+   "monto": 864.0,
+   "moneda": "USD",
+   "estado": "mes_en_curso"
+  },
+  {
+   "cliente": "SXP SOLUCIONES INTEGRALES",
+   "codigo": "CIP-6 B-8",
+   "monto": 864.0,
+   "moneda": "USD",
+   "estado": "mes_en_curso"
+  },
+  {
+   "cliente": "JESUS DIAZ (CIP 7 B-1)",
+   "codigo": "CIP 7 B-1",
+   "monto": 970.0,
+   "moneda": "USD",
+   "estado": "mes_en_curso"
+  },
+  {
+   "cliente": "AGUSTIN  DE LA ROSA  (CANCHAS DE PADEL)",
+   "codigo": "CIP7- T 6000",
+   "monto": 0.0,
+   "moneda": "USD",
+   "estado": "verde"
+  },
+  {
+   "cliente": "STRATEGA SOLUCIONES INTEGRALES",
+   "codigo": "LOCAL 3",
+   "monto": 648.0,
+   "moneda": "USD",
+   "estado": "mes_en_curso"
+  },
+  {
+   "cliente": "JOSE ANTONIO MAYORAL",
+   "codigo": "LOCAL 4",
+   "monto": 1553.43,
+   "moneda": "USD",
+   "estado": "atrasado"
+  },
+  {
+   "cliente": "DIESEL Y ENERGETICOS DE MEXICO",
+   "codigo": "LOCAL 7",
+   "monto": 0,
+   "moneda": "USD",
+   "estado": "verde"
+  },
+  {
+   "cliente": "LUIS RUEDAFLORES PAZ",
+   "codigo": "LOCAL 9",
+   "monto": 2063.88,
+   "moneda": "USD",
+   "estado": "atrasado"
+  },
+  {
+   "cliente": "CENTRO CAMBIARIO BEST RATE",
+   "codigo": "LOCAL 1",
+   "monto": 0.0,
+   "moneda": "MXN",
+   "estado": "verde"
+  },
+  {
+   "cliente": "CARMEN SARAIDA MARTINEZ",
+   "codigo": "LOCAL 2",
+   "monto": 33210.0,
+   "moneda": "MXN",
+   "estado": "atrasado"
+  },
+  {
+   "cliente": "URUZ ENVIA Y RECIBE",
+   "codigo": "CIP-14 B 1Y 2",
+   "monto": 95076.03,
+   "moneda": "MXN",
+   "estado": "atrasado"
+  },
+  {
+   "cliente": "FIEL ELIAM MONTES HUERTA",
+   "codigo": "LOCAL #3 COLOSIO",
+   "monto": 5400.0,
+   "moneda": "MXN",
+   "estado": "mes_en_curso"
+  },
+  {
+   "cliente": "RANCHO LA MIURA",
+   "codigo": "LOCAL #2 COLOSIO",
+   "monto": 7413.33,
+   "moneda": "MXN",
+   "estado": "mes_en_curso"
+  },
+  {
+   "cliente": "TELEFONIA POR CABLE",
+   "codigo": "ESPECTACULAR",
+   "monto": 13757.04,
+   "moneda": "MXN",
+   "estado": "mes_en_curso"
+  },
+  {
+   "cliente": "MCM",
+   "codigo": "ESPECTACULAR",
+   "monto": 8340.0,
+   "moneda": "MXN",
+   "estado": "mes_en_curso"
+  }
+ ],
+ "pendientes": {
+  "pend_pago_mn": 228617.22,
+  "pend_pago_usd": 0
+ },
+ "facturas_julio": [
+  {
+   "fecha": "2026-06-30",
+   "folio": 2114,
+   "cliente": "TORLEY GROUP",
+   "total_usd": 8340,
+   "mn": 8340,
+   "fecha_pago": "2026-07-02",
+   "depositado_usd": 8340,
+   "depositado_mn": 0,
+   "banco": "BANAMEX"
+  },
+  {
+   "fecha": "2026-07-01",
+   "folio": 2115,
+   "cliente": "WURTH INDUSTRY",
+   "total_usd": 2687.33,
+   "mn": 47028.275,
+   "fecha_pago": "2026-07-07",
+   "depositado_usd": 0,
+   "depositado_mn": 46963.24,
+   "banco": "BANAMEX"
+  },
+  {
+   "fecha": "2026-07-01",
+   "folio": 2116,
+   "cliente": "HISCOMEX",
+   "total_usd": 3521.33,
+   "mn": 61623.275,
+   "fecha_pago": "2026-07-03",
+   "depositado_usd": 3521.33,
+   "depositado_mn": 0,
+   "banco": "BANAMEX"
+  },
+  {
+   "fecha": "2026-07-01",
+   "folio": 2117,
+   "cliente": "NOVACAB",
+   "total_usd": 5212.5,
+   "mn": 91218.75,
+   "fecha_pago": "2026-07-10",
+   "depositado_usd": 0,
+   "depositado_mn": 91736.35,
+   "banco": "BANAMEX"
+  },
+  {
+   "fecha": "2026-07-01",
+   "folio": 2120,
+   "cliente": "KATHYA VAZQUEZ MUÑOZ",
+   "total_usd": 1620,
+   "mn": 28350,
+   "fecha_pago": "2026-07-03",
+   "depositado_usd": 0,
+   "depositado_mn": 28300.27,
+   "banco": "BANAMEX"
+  },
+  {
+   "fecha": "2026-07-01",
+   "folio": 2121,
+   "cliente": "NANCY KARINA PERALTA PRIMERO",
+   "total_usd": 1404,
+   "mn": 24570,
+   "fecha_pago": "2026-07-03",
+   "depositado_usd": 0,
+   "depositado_mn": 24526.9,
+   "banco": "BANORTE"
+  },
+  {
+   "fecha": "2026-07-01",
+   "folio": 2122,
+   "cliente": "CONSTRUOPERACIONES",
+   "total_usd": 1019.33,
+   "mn": 17838.275,
+   "fecha_pago": "2026-07-02",
+   "depositado_usd": 0,
+   "depositado_mn": 17806.98,
+   "banco": "BANAMEX"
+  },
+  {
+   "fecha": "2026-07-01",
+   "folio": 2127,
+   "cliente": "OSCAR HUMBERTO FIGUEROA VALENZUELA",
+   "total_usd": 12327.683,
+   "mn": 12327.68,
+   "fecha_pago": "2026-07-02",
+   "depositado_usd": 0,
+   "depositado_mn": 12327.68,
+   "banco": "BANORTE"
+  },
+  {
+   "fecha": "2026-07-01",
+   "folio": 2129,
+   "cliente": "DIESEL Y ENERGETICOS DE MEXICO",
+   "total_usd": 463.33,
+   "mn": 8108.275,
+   "fecha_pago": "2026-07-02",
+   "depositado_usd": 0,
+   "depositado_mn": 8125.32,
+   "banco": "BANAMEX"
+  },
+  {
+   "fecha": "2026-07-01",
+   "folio": 2134,
+   "cliente": "FIDEL ELIACIM MONTES HUERTA",
+   "total_usd": 5400,
+   "mn": 5400,
+   "fecha_pago": null,
+   "depositado_usd": 0,
+   "depositado_mn": 5000,
+   "banco": "BANORTE"
+  }
+ ],
+ "nomina_blocks": [
+  {
+   "titulo": "NOMINA # 28",
+   "periodo": "10 AL 16 DE JULIO DE 2026.",
+   "empleados": [
+    {
+     "nombre": "LUIS CARLOS DELGADO CAÑEZ",
+     "dias": 7,
+     "sem": 0,
+     "infonavit": null,
+     "total": 0,
+     "depositos": 0,
+     "nota": null
+    },
+    {
+     "nombre": "BARNETT MEZA KARINA ELIZABETH",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "LOPEZ MENDEZ CARLOS ARTURO",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": " ",
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "KARLA DANITTZA BARRERAS",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "ALONSO ESTRELLA ANAYA",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": -755.89,
+     "total": 2330.11,
+     "depositos": 2330.11,
+     "nota": "CREDITO INFONAVIT"
+    },
+    {
+     "nombre": "MARCO ANTONIO HUMO",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    }
+   ],
+   "total": 14674.11
+  },
+  {
+   "titulo": "NOMINA # 27",
+   "periodo": "03 AL 09 DE JULIO DE 2026.",
+   "empleados": [
+    {
+     "nombre": "LUIS CARLOS DELGADO CAÑEZ",
+     "dias": 7,
+     "sem": 0,
+     "infonavit": null,
+     "total": 0,
+     "depositos": 0,
+     "nota": null
+    },
+    {
+     "nombre": "BARNETT MEZA KARINA ELIZABETH",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "LOPEZ MENDEZ CARLOS ARTURO",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": " ",
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "KARLA DANITTZA BARRERAS",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "ALONSO ESTRELLA ANAYA",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": -755.89,
+     "total": 2330.11,
+     "depositos": 2330.11,
+     "nota": "CREDITO INFONAVIT"
+    },
+    {
+     "nombre": "MARCO ANTONIO HUMO",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    }
+   ],
+   "total": 14674.11
+  },
+  {
+   "titulo": "NOMINA # 27",
+   "periodo": "03 AL 09 DE JULIO DE 2026.",
+   "empleados": [
+    {
+     "nombre": "LUIS CARLOS DELGADO CAÑEZ",
+     "dias": 7,
+     "sem": 0,
+     "infonavit": null,
+     "total": 0,
+     "depositos": 0,
+     "nota": null
+    },
+    {
+     "nombre": "BARNETT MEZA KARINA ELIZABETH",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "LOPEZ MENDEZ CARLOS ARTURO",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": " ",
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "KARLA DANITTZA BARRERAS",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "ALONSO ESTRELLA ANAYA",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": -755.89,
+     "total": 2330.11,
+     "depositos": 2330.11,
+     "nota": "CREDITO INFONAVIT"
+    },
+    {
+     "nombre": "COTA OCHOA ROQUE",
+     "dias": 3,
+     "sem": 7492.2,
+     "infonavit": 0,
+     "total": 7492.2,
+     "depositos": 7492.2,
+     "nota": 7492.2
+    },
+    {
+     "nombre": "MARCO ANTONIO HUMO",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    }
+   ],
+   "total": 22166.31
+  },
+  {
+   "titulo": "NOMINA # 26",
+   "periodo": "26 DE JUNIO AL 02 DE JULIO DE 2026.",
+   "empleados": [
+    {
+     "nombre": "LUIS CARLOS DELGADO CAÑEZ",
+     "dias": 7,
+     "sem": 0,
+     "infonavit": null,
+     "total": 0,
+     "depositos": 0,
+     "nota": null
+    },
+    {
+     "nombre": "BARNETT MEZA KARINA ELIZABETH",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "LOPEZ MENDEZ CARLOS ARTURO",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": " ",
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "KARLA DANITTZA BARRERAS",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "ALONSO ESTRELLA ANAYA",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": -755.89,
+     "total": 2330.11,
+     "depositos": 2330.11,
+     "nota": "CREDITO INFONAVIT"
+    },
+    {
+     "nombre": "COTA OCHOA ROQUE",
+     "dias": 6,
+     "sem": 2645.142857142857,
+     "infonavit": 0,
+     "total": 2645.142857142857,
+     "depositos": 2645.142857142857,
+     "nota": null
+    },
+    {
+     "nombre": "MARCO ANTONIO HUMO",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    }
+   ],
+   "total": 17319.252857142856
+  },
+  {
+   "titulo": "NOMINA # 25",
+   "periodo": "19 AL 25  DE JUNIO DE 2026.",
+   "empleados": [
+    {
+     "nombre": "LUIS CARLOS DELGADO CAÑEZ",
+     "dias": 7,
+     "sem": 0,
+     "infonavit": null,
+     "total": 0,
+     "depositos": 0,
+     "nota": null
+    },
+    {
+     "nombre": "BARNETT MEZA KARINA ELIZABETH",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "LOPEZ MENDEZ CARLOS ARTURO",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": " ",
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "KARLA DANITTZA BARRERAS",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "ALONSO ESTRELLA ANAYA",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": -755.89,
+     "total": 2330.11,
+     "depositos": 2330.11,
+     "nota": "CREDITO INFONAVIT"
+    },
+    {
+     "nombre": "COTA OCHOA ROQUE",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "MARCO ANTONIO HUMO",
+     "dias": 4,
+     "sem": 1763.4285714285713,
+     "infonavit": 0,
+     "total": 1763.4285714285713,
+     "depositos": 1763.4285714285713,
+     "nota": null
+    }
+   ],
+   "total": 16437.538571428573
+  },
+  {
+   "titulo": "NOMINA # 24",
+   "periodo": "12 al 18 DE JUNIO DE 2026.",
+   "empleados": [
+    {
+     "nombre": "LUIS CARLOS DELGADO CAÑEZ",
+     "dias": 7,
+     "sem": 0,
+     "infonavit": null,
+     "total": 0,
+     "depositos": 0,
+     "nota": null
+    },
+    {
+     "nombre": "BARNETT MEZA KARINA ELIZABETH",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "LOPEZ MENDEZ CARLOS ARTURO",
+     "dias": 6,
+     "sem": 2645.142857142857,
+     "infonavit": " ",
+     "total": 2645.142857142857,
+     "depositos": 2645.142857142857,
+     "nota": null
+    },
+    {
+     "nombre": "KARLA DANITTZA BARRERAS",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "ALONSO ESTRELLA ANAYA",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": -755.89,
+     "total": 2330.11,
+     "depositos": 2330.11,
+     "nota": "CREDITO INFONAVIT"
+    },
+    {
+     "nombre": "COTA OCHOA ROQUE",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    }
+   ],
+   "total": 14233.252857142857
+  },
+  {
+   "titulo": "NOMINA # 23",
+   "periodo": "05 AL 11  DE JUNIO DE 2026.",
+   "empleados": [
+    {
+     "nombre": "LUIS CARLOS DELGADO CAÑEZ",
+     "dias": 7,
+     "sem": 0,
+     "infonavit": null,
+     "total": 0,
+     "depositos": 0,
+     "nota": null
+    },
+    {
+     "nombre": "BARNETT MEZA KARINA ELIZABETH",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "LOPEZ MENDEZ CARLOS ARTURO",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": " ",
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "KARLA DANITTZA BARRERAS",
+     "dias": 6,
+     "sem": 2645.142857142857,
+     "infonavit": 0,
+     "total": 2645.142857142857,
+     "depositos": 2645.142857142857,
+     "nota": null
+    },
+    {
+     "nombre": "ALONSO ESTRELLA ANAYA",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": -755.89,
+     "total": 2330.11,
+     "depositos": 2330.11,
+     "nota": "CREDITO INFONAVIT"
+    },
+    {
+     "nombre": "COTA OCHOA ROQUE",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    }
+   ],
+   "total": 14233.252857142857
+  },
+  {
+   "titulo": "NOMINA # 22",
+   "periodo": "29 DE MAYO AL 05 DE JUNIO DE 2026.",
+   "empleados": [
+    {
+     "nombre": "LUIS CARLOS DELGADO CAÑEZ",
+     "dias": 7,
+     "sem": 0,
+     "infonavit": null,
+     "total": 0,
+     "depositos": 0,
+     "nota": null
+    },
+    {
+     "nombre": "BARNETT MEZA KARINA ELIZABETH",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "LOPEZ MENDEZ CARLOS ARTURO",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": " ",
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "KARLA DANITTZA BARRERAS",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    },
+    {
+     "nombre": "ALONSO ESTRELLA ANAYA",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": -755.89,
+     "total": 2330.11,
+     "depositos": 2330.11,
+     "nota": "CREDITO INFONAVIT"
+    },
+    {
+     "nombre": "COTA OCHOA ROQUE",
+     "dias": 7,
+     "sem": 3086,
+     "infonavit": 0,
+     "total": 3086,
+     "depositos": 3086,
+     "nota": null
+    }
+   ],
+   "total": 14674.11
+  }
+ ],
+ "otros_ingresos": [
+  {
+   "cliente": "ALEX BERKO (BD SUR)",
+   "codigo": "M.N.",
+   "monto": 323525.55,
+   "moneda": "MXN",
+   "categoria": "Construcción"
+  }
+ ],
+ "resumen_anual": {
+  "total_mn": 4739170.51205,
+  "total_usd": 83029.013,
+  "promedio_mn": 677024.3588642858,
+  "promedio_usd": 11861.287571428573,
+  "meses_contados": 7
+ },
+ "ingresos_resumen": {
+  "pagado_mn": 299404.53,
+  "pendiente_mn": 5400,
+  "n_pagado": 9,
+  "n_pendiente": 1,
+  "total_facturado_mn": 304804.53
+ },
+ "bodega_counts": {
+  "verde": 10,
+  "mes_en_curso": 10,
+  "atrasado": 4,
+  "amarillo": 0
+ }
+};
+
+/* ===================== CONFIG ===================== */
+const PASSWORD = "delgra2026"; // <-- cámbiala aquí
+const ONEDRIVE_SHARE_URL = "https://1drv.ms/x/c/ac062da5c179f45b/IQDPrpj6miy7T63a_7rWwsdjAez1SuCl20y4BzzoLn_PYj8?e=1EJi7X";
+
+function tryUnlock(){
+  const val = document.getElementById('pw').value.trim().toLowerCase();
+  if(val === PASSWORD){
+    document.getElementById('gate').style.display='none';
+    document.getElementById('app').style.display='block';
+    renderAll(); // pinta de inmediato con el snapshot embebido
+    init();      // intenta jalar el Excel en vivo y repinta si funciona
+  } else {
+    document.getElementById('pwErr').textContent = 'Contraseña incorrecta';
+  }
+}
+document.getElementById('pw').addEventListener('keydown', e=>{ if(e.key==='Enter') tryUnlock(); });
+
+/* ===================== HELPERS ===================== */
+const fmtMXN = n => (n===null||n===undefined||isNaN(n)) ? '—' : '$' + Number(n).toLocaleString('es-MX',{maximumFractionDigits:0}) + ' MXN';
+const fmtUSD = n => (n===null||n===undefined||isNaN(n)) ? '—' : '$' + Number(n).toLocaleString('en-US',{maximumFractionDigits:0}) + ' USD';
+const fmtNum = n => (n===null||n===undefined||isNaN(n)) ? '—' : Number(n).toLocaleString('es-MX',{maximumFractionDigits:0});
+
+/* ===================== TABS ===================== */
+function goToPage(key){
+  const btn = document.querySelector(`nav.tabs button[data-page="${key}"]`);
+  if(btn) btn.click();
+}
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-'+btn.dataset.page).classList.add('active');
+    window.scrollTo({top:0,behavior:'instant'});
+  });
+});
+
+/* ---- generic donut chart (conic-gradient, no libraries) ---- */
+function renderDonut(boxId, legendId, segments, centerPct, centerSub){
+  const total = segments.reduce((s,x)=>s+Math.max(x.value,0), 0) || 1;
+  let acc = 0;
+  const stops = segments.map(seg=>{
+    const start = (acc/total)*360;
+    acc += Math.max(seg.value,0);
+    const end = (acc/total)*360;
+    return `${seg.color} ${start}deg ${end}deg`;
+  }).join(', ');
+  const box = document.getElementById(boxId);
+  box.innerHTML = `
+    <div class="ring" style="background:conic-gradient(${stops});"></div>
+    <div class="hole"><div class="pct">${centerPct}</div><div class="sub">${centerSub}</div></div>
+  `;
+  if(legendId){
+    const legend = document.getElementById(legendId);
+    legend.innerHTML = segments.map(seg=>`
+      <div class="item">
+        <span class="sw" style="background:${seg.color}"></span>
+        <span class="lbl">${seg.label}</span>
+        <span class="amt">${seg.amtLabel}</span>
+      </div>`).join('');
+  }
+}
+
+/* ===================== RENDER ===================== */
+function renderAll(){
+  const d = DATA;
+  document.getElementById('updatedAt').textContent = 'Actualizado: ' + new Date(d.generado).toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'});
+  document.getElementById('semanaLabel').textContent = d.semana_label || '';
+
+  // current month data (julio)
+  const julio = d.months2026.find(m => m.mes.toUpperCase().startsWith('JULIO'));
+  const tc = julio ? julio.tc : d.posicion_general.tc_referencia;
+  document.getElementById('tcActual').textContent = tc ? ('$' + Number(tc).toFixed(2) + ' MXN') : '—';
+
+  document.getElementById('kpiIngresoMN').textContent = fmtMXN(julio ? julio.mn : null);
+  document.getElementById('kpiIngresoUSD').textContent = fmtUSD(julio ? julio.usd : null);
+  document.getElementById('kpiIngresoTotalMN').textContent = fmtMXN(julio ? julio.total_mn : null);
+  document.getElementById('kpiIngresoTotalUSD').textContent = fmtUSD(tc && julio ? julio.total_mn / tc : null);
+
+  const pendMN = d.pendientes.pend_pago_mn || 0;
+  const pendUSD = d.posicion_general.cxc_usd || 0;
+  document.getElementById('kpiPendMN').textContent = fmtMXN(d.posicion_general.cxc_mn);
+  document.getElementById('kpiPendUSD').textContent = fmtUSD(pendUSD);
+
+  // proyeccion = ya cobrado + pendiente por cobrar (todo a MXN)
+  const yaCobradoMN = julio ? julio.total_mn : 0;
+  const pendienteTotalMN = (d.posicion_general.cxc_mn||0) + (d.posicion_general.cxc_usd_en_mn||0);
+  const proyeccionMN = yaCobradoMN + pendienteTotalMN;
+  const proyeccionUSD = tc ? proyeccionMN / tc : null;
+  document.getElementById('kpiProyMN').textContent = fmtMXN(proyeccionMN);
+  document.getElementById('kpiProyUSD').textContent = fmtUSD(proyeccionUSD);
+  const pct = proyeccionMN ? Math.min(100, Math.round((yaCobradoMN/proyeccionMN)*100)) : 0;
+  renderDonut('donutIngreso', 'donutIngresoLegend', [
+    {label:'Ya cobrado', value:yaCobradoMN, color:'var(--mxn)', amtLabel:fmtMXN(yaCobradoMN)},
+    {label:'Falta por cobrar', value:pendienteTotalMN, color:'#e3e1db', amtLabel:fmtMXN(pendienteTotalMN)}
+  ], pct+'%', 'cobrado');
+
+  // quien va a pagar
+  const bc = d.bodega_counts || {};
+  document.getElementById('kpiPersonasMesCurso').textContent = fmtNum(bc.mes_en_curso || 0);
+  document.getElementById('kpiPersonasAtrasado').textContent = fmtNum(bc.atrasado || 0);
+
+  // flujo de efectivo
+  document.getElementById('kpiSaldoMN').textContent = fmtMXN(d.posicion_general.saldo_bancos_mn);
+  document.getElementById('kpiSaldoUSD').textContent = fmtUSD(d.posicion_general.saldo_bancos_usd);
+  document.getElementById('kpiCxpMN').textContent = fmtMXN(d.posicion_general.cxp_mn);
+  document.getElementById('kpiTotalGeneral').textContent = fmtMXN(d.posicion_general.total_general_mn);
+
+  // resumen ingresos julio
+  const ir = d.ingresos_resumen || {};
+  document.getElementById('kpiCobradoMN').textContent = fmtMXN(ir.pagado_mn);
+  document.getElementById('kpiDebenMN').textContent = fmtMXN(ir.pendiente_mn);
+  document.getElementById('kpiFacturadoMN').textContent = fmtMXN(ir.total_facturado_mn);
+  document.getElementById('nPagado').textContent = ir.n_pagado ? `(${ir.n_pagado})` : '';
+  document.getElementById('nPendiente').textContent = ir.n_pendiente ? `(${ir.n_pendiente})` : '';
+
+  renderBodegaSummary();
+  renderFacturas();
+  renderBodegaKanban();
+  renderOtrosIngresos();
+  renderNominaPeriods();
+  renderHistorico();
+}
+
+/* ---- estado de bodegas (colores) ---- */
+function bodegaStatus(b){
+  return b.estado || 'blanco';
+}
+function statusLabel(s){
+  return {verde:'Ya pagó', mes_en_curso:'Debe', atrasado:'Atrasado', amarillo:'Cancelación', blanco:'Debe'}[s] || s;
+}
+
+function renderBodegaSummary(){
+  const counts = {verde:0, mes_en_curso:0, atrasado:0};
+  DATA.bodegas.forEach(b=>{ counts[b.estado]=(counts[b.estado]||0)+1; });
+  const total = counts.verde + counts.mes_en_curso + counts.atrasado || 1;
+  const pctPagado = Math.round((counts.verde/total)*100);
+  renderDonut('donutBodegas', 'donutBodegasLegend', [
+    {label:'Ya pagaron', value:counts.verde, color:'var(--green)', amtLabel:counts.verde},
+    {label:'Deben (mes en curso)', value:counts.mes_en_curso, color:'var(--white-status)', amtLabel:counts.mes_en_curso},
+    {label:'Atrasados', value:counts.atrasado, color:'var(--red)', amtLabel:counts.atrasado}
+  ], pctPagado+'%', 'al día');
+}
+
+/* ---- ingresos / facturas ---- */
+function renderFacturas(){
+  const wrap = document.getElementById('facturasList');
+  if(!DATA.facturas_julio.length){ wrap.innerHTML = '<div class="empty">Sin facturas registradas este mes.</div>'; return; }
+  wrap.innerHTML = DATA.facturas_julio.map(f=>{
+    const pagado = !!f.fecha_pago;
+    const cancelada = (f.cliente||'').toUpperCase().includes('CANCELAD');
+    const status = cancelada ? 'amarillo' : (pagado ? 'verde' : 'blanco');
+    return `
+    <div class="client-card st-${status}">
+      <div class="info">
+        <div class="name">${f.cliente || 'Sin nombre'}</div>
+        <div class="code">Folio ${f.folio || '—'} · ${f.fecha ? new Date(f.fecha).toLocaleDateString('es-MX',{day:'numeric',month:'short'}) : ''} ${f.banco ? '· '+f.banco : ''}</div>
+      </div>
+      <div class="amt">
+        <div class="n mxn-color">${fmtMXN(f.mn)}</div>
+        <span class="badge ${status}">${cancelada?'Cancelada':(pagado?'Pagado':'Pendiente')}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---- bodegas page: columnas por estado (kanban) ---- */
+function renderBodegaKanban(){
+  const wrap = document.getElementById('bodegaKanban');
+  const cols = [
+    {key:'verde', label:'Ya pagaron', color:'var(--green)'},
+    {key:'mes_en_curso', label:'Deben — mes en curso', color:'var(--white-status)'},
+    {key:'atrasado', label:'Atrasados', color:'var(--red)'}
+  ];
+  wrap.innerHTML = cols.map(c=>{
+    const list = DATA.bodegas.filter(b=>b.estado===c.key);
+    const cards = list.length ? list.map(b=>{
+      const isUsd = b.moneda === 'USD';
+      return `
+      <div class="kan-card">
+        <div class="name">${b.cliente}</div>
+        <div class="code">${b.codigo || ''}</div>
+        <div class="amt ${isUsd?'usd-color':'mxn-color'}">${isUsd ? fmtUSD(b.monto) : fmtMXN(b.monto)}</div>
+        ${isUsd ? '<span class="usd-tag">USD</span>' : ''}
+      </div>`;
+    }).join('') : '<div class="empty" style="padding:12px 0;font-size:11.5px;">Sin clientes</div>';
+    return `
+    <div class="kan-col">
+      <div class="kan-head"><span class="dot" style="background:${c.color}"></span>${c.label}<span class="kan-count">${list.length}</span></div>
+      ${cards}
+    </div>`;
+  }).join('');
+}
+
+/* ---- otros ingresos page ---- */
+function renderOtrosIngresos(){
+  const wrap = document.getElementById('otrosList');
+  const list = DATA.otros_ingresos || [];
+  if(!list.length){ wrap.innerHTML = '<div class="empty">Sin registros.</div>'; return; }
+  wrap.innerHTML = list.map(o=>{
+    const isUsd = o.moneda === 'USD';
+    return `
+    <div class="client-card">
+      <div class="info">
+        <div class="name">${o.cliente}</div>
+        <div class="code">${o.categoria || ''} ${o.codigo ? '· '+o.codigo : ''}</div>
+      </div>
+      <div class="amt">
+        <div class="n ${isUsd?'usd-color':'mxn-color'}">${isUsd ? fmtUSD(o.monto) : fmtMXN(o.monto)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---- nomina page ---- */
+let currentNominaIdx = 0;
+function renderNominaPeriods(){
+  const wrap = document.getElementById('periodSelect');
+  wrap.innerHTML = DATA.nomina_blocks.map((n,i)=>`<button data-i="${i}" class="${i===0?'on':''}">${n.titulo.replace('NOMINA #','#')}</button>`).join('');
+  wrap.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      wrap.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      currentNominaIdx = parseInt(b.dataset.i);
+      renderNominaDetail();
+    });
+  });
+  renderNominaDetail();
+  renderNominaChart();
+}
+function renderNominaDetail(){
+  const n = DATA.nomina_blocks[currentNominaIdx];
+  if(!n) return;
+  document.getElementById('nominaTotal').textContent = fmtMXN(n.total);
+  const wrap = document.getElementById('nominaEmpleados');
+  wrap.innerHTML = `<div style="font-size:11px;color:var(--ink-dim);margin-bottom:8px;">${n.periodo || ''}</div>` +
+    n.empleados.map(e=>`
+    <div class="nomina-emp">
+      <div>
+        <div class="nom">${e.nombre}</div>
+        ${e.nota ? `<span class="note">${e.nota}</span>` : ''}
+      </div>
+      <div class="tot">${fmtMXN(e.total)}</div>
+    </div>`).join('');
+}
+function renderNominaChart(){
+  const wrap = document.getElementById('nominaChart');
+  const blocks = [...DATA.nomina_blocks].reverse();
+  const max = Math.max(...blocks.map(b=>b.total||0), 1);
+  wrap.innerHTML = blocks.map(b=>{
+    const h = Math.max(4, Math.round(((b.total||0)/max)*90));
+    const num = (b.titulo.match(/\d+/)||[''])[0];
+    return `<div class="col"><div class="val">${fmtNum(b.total)}</div><div class="bar" style="height:${h}px;" title="${fmtMXN(b.total)}"></div><div class="lbl">#${num}</div></div>`;
+  }).join('');
+}
+
+/* ---- historico page ---- */
+function renderHistorico(){
+  const months = DATA.months2026.filter(m=>m.total_mn && m.total_mn>0);
+  const avg = months.reduce((s,m)=>s+m.total_mn,0) / (months.length||1);
+
+  const ra = DATA.resumen_anual || {};
+  document.getElementById('kpiAnualMN').textContent = fmtMXN(ra.total_mn);
+  document.getElementById('kpiAnualUSD').textContent = fmtUSD(ra.total_usd);
+  document.getElementById('kpiPromedioMN').textContent = fmtMXN(ra.promedio_mn);
+  document.getElementById('kpiPromedioUSD').textContent = fmtUSD(ra.promedio_usd);
+
+  // bar chart
+  const chart = document.getElementById('histChart');
+  const max = Math.max(...months.map(m=>m.total_mn), 1);
+  chart.innerHTML = months.map(m=>{
+    const h = Math.max(4, Math.round((m.total_mn/max)*120));
+    const isAnom = Math.abs(m.total_mn-avg)/avg > 0.4;
+    return `<div class="col"><div class="bar ${isAnom?'anom':''}" style="height:${h}px;" title="${fmtMXN(m.total_mn)}"></div><div class="lbl">${m.mes.slice(0,3)}</div></div>`;
+  }).join('');
+
+  // table
+  const table = document.getElementById('histTable');
+  let rows = `<tr><th>Mes</th><th>USD</th><th>MXN</th><th>Total MXN</th></tr>`;
+  months.forEach(m=>{
+    const isAnom = Math.abs(m.total_mn-avg)/avg > 0.4;
+    rows += `<tr>
+      <td class="name">${m.mes}</td>
+      <td>${fmtNum(m.usd)}</td>
+      <td>${fmtNum(m.mn)}</td>
+      <td class="${isAnom?'anomaly':''}">${fmtNum(m.total_mn)}${isAnom?'<span class="anomaly-tag">▲</span>':''}</td>
+    </tr>`;
+  });
+  rows += `<tr><td class="name" style="font-weight:700;">Promedio</td><td style="font-weight:700;">${fmtNum(ra.promedio_usd)}</td><td></td><td style="font-weight:700;">${fmtNum(avg)}</td></tr>`;
+  table.innerHTML = rows;
+}
+
+/* ===================================================================
+   CONEXIÓN EN VIVO CON EL EXCEL (OneDrive) + CARGA MANUAL DE RESPALDO
+   =================================================================== */
+
+function setSyncStatus(state, text){
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncText');
+  const retry = document.getElementById('syncRetryBtn');
+  dot.className = 'sync-dot ' + (state==='ok'?'ok':state==='loading'?'loading':state==='err'?'err':'');
+  txt.textContent = text;
+  retry.style.display = (state==='err') ? 'inline-block' : 'none';
+}
+
+function oneDriveApiUrl(shareUrl){
+  // Método legado (api.onedrive.com) — a veces ya no acepta acceso anónimo
+  const b64 = btoa(shareUrl).replace(/=+$/,'').replace(/\//g,'_').replace(/\+/g,'-');
+  return `https://api.onedrive.com/v1.0/shares/u!${b64}/root/content`;
+}
+function oneDriveDownloadParamUrl(shareUrl){
+  // Fuerza descarga directa agregando el parámetro download=1 al link compartido
+  const sep = shareUrl.includes('?') ? '&' : '?';
+  return shareUrl + sep + 'download=1';
+}
+
+async function fetchOneDriveWorkbook(shareUrl){
+  const attempts = [oneDriveDownloadParamUrl(shareUrl), oneDriveApiUrl(shareUrl)];
+  let lastErr;
+  for(const url of attempts){
+    try{
+      const res = await fetch(url);
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const buf = await res.arrayBuffer();
+      return XLSX.read(buf, {type:'array', cellDates:true});
+    } catch(err){
+      lastErr = err;
+    }
+  }
+  throw lastErr;
+}
+
+const MESES_ES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+
+function sheetRows(wb, name){
+  const ws = wb.Sheets[name];
+  if(!ws) return null;
+  return XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:null});
+}
+function cell(rows, r /*1-indexed*/, c /*1-indexed*/){
+  const row = rows[r-1];
+  if(!row) return null;
+  const v = row[c-1];
+  return (v===undefined) ? null : v;
+}
+function cleanStr(s){ return (typeof s === 'string') ? s.trim() : s; }
+function num(v){ return (typeof v === 'number') ? v : (v===null||v===''||v===undefined) ? 0 : (isNaN(parseFloat(v)) ? 0 : parseFloat(v)); }
+
+function normName(name){
+  if(!name) return '';
+  const stop = new Set(['DE','SA','CV','LA','EL','Y','SOLUCIONES','INTEGRALES','GRUPO','GARCIA','MUÑOZ','VILLANUEVA','CIRA','OROZCO','PRIMERO','PAZ','GALLEGO']);
+  const n = name.toUpperCase().replace(/[^A-ZÑÁÉÍÓÚ0-9 ]/g,' ');
+  const words = n.split(/\s+/).filter(w=>w && !stop.has(w));
+  return words.slice(0,2).join(' ');
+}
+
+function parsePeriodo(mesVal){
+  if(!mesVal) return null;
+  if(mesVal instanceof Date) return mesVal.getFullYear()*100 + (mesVal.getMonth()+1);
+  if(typeof mesVal !== 'string') return null;
+  const t = mesVal.toUpperCase();
+  let mo = null;
+  for(let i=0;i<MESES_ES.length;i++){ if(t.includes(MESES_ES[i])){ mo = i+1; break; } }
+  const m = t.match(/20\d\d/);
+  const yr = m ? parseInt(m[0]) : null;
+  return (mo && yr) ? yr*100+mo : null;
+}
+
+function excelDateToJs(v){
+  if(v instanceof Date) return v;
+  return null;
+}
+
+function parseWorkbookToData(wb){
+  const now = new Date();
+  const mesActualNombre = MESES_ES[now.getMonth()];
+  const mesActualPeriodo = now.getFullYear()*100 + (now.getMonth()+1);
+
+  // ---------- 1. INGRESOS mensuales ----------
+  const ingRows = sheetRows(wb, 'INGRESOS ANA MARCELA 2026');
+  const months2026 = [];
+  if(ingRows){
+    for(let r=4; r<=16; r++){
+      const mesTxt = cleanStr(cell(ingRows,r,1));
+      if(!mesTxt || typeof mesTxt !== 'string') continue;
+      if(!MESES_ES.some(m=>mesTxt.toUpperCase().startsWith(m))) continue;
+      months2026.push({
+        mes: mesTxt,
+        usd: num(cell(ingRows,r,2)), tc: cell(ingRows,r,3),
+        usd_en_mn: num(cell(ingRows,r,4)), mn: num(cell(ingRows,r,5)),
+        total_mn: num(cell(ingRows,r,6)), fact_usd: num(cell(ingRows,r,7)), fact_mn: num(cell(ingRows,r,8))
+      });
+    }
+  }
+
+  // ---------- 2. ESTADO FINANCIERO ----------
+  const efRows = sheetRows(wb, 'ESTADO FINANCIERO 2026');
+  let posicion_general = {}, semana_label = '', bodegasRaw = [], pendientes = {};
+  if(efRows){
+    posicion_general = {
+      cxc_mn: num(cell(efRows,2,4)),
+      cxc_usd: num(cell(efRows,3,3)), cxc_usd_en_mn: num(cell(efRows,3,4)),
+      cxp_mn: num(cell(efRows,4,4)),
+      cxp_usd: num(cell(efRows,5,3)),
+      saldo_bancos_mn: num(cell(efRows,6,4)),
+      saldo_bancos_usd: num(cell(efRows,7,3)), saldo_bancos_usd_en_mn: num(cell(efRows,7,4)),
+      total_general_mn: num(cell(efRows,8,4)),
+      tc_referencia: 17.25
+    };
+    semana_label = cleanStr(cell(efRows,11,1)) || '';
+    for(let r=13; r<=30; r++){
+      const cliente = cleanStr(cell(efRows,r,4));
+      const codigo = cleanStr(cell(efRows,r,5));
+      let monto = cell(efRows,r,6);
+      if(cliente){
+        monto = num(monto);
+        const moneda = (codigo && codigo.includes('M.N.')) ? 'MXN' : 'USD';
+        bodegasRaw.push({cliente, codigo, monto, moneda});
+      }
+    }
+    for(let r=32; r<=38; r++){
+      const cliente = cleanStr(cell(efRows,r,4));
+      const codigo = cleanStr(cell(efRows,r,5));
+      let monto = cell(efRows,r,6);
+      if(cliente){
+        monto = num(monto);
+        bodegasRaw.push({cliente, codigo, monto, moneda:'MXN'});
+      }
+    }
+    pendientes = { pend_pago_mn: num(cell(efRows,48,3)), pend_pago_usd: num(cell(efRows,49,3)) };
+  }
+
+  // ---------- 3. FACTURACION (todas las filas, para historial + mes actual) ----------
+  const facRows = sheetRows(wb, 'FACTURACION ANA 2026');
+  let facturas_mes = [];
+  const totalsByClient = {}; // norm(name) -> [totales]
+  if(facRows){
+    const seen = new Set();
+    for(let r=3; r<=facRows.length; r++){
+      const cliente = cleanStr(cell(facRows,r,3));
+      if(!cliente) continue;
+      const totalUsd = num(cell(facRows,r,4));
+      if(totalUsd > 0){
+        const key = normName(cliente);
+        (totalsByClient[key] = totalsByClient[key] || []).push(totalUsd);
+      }
+      const periodo = parsePeriodo(cell(facRows,r,11));
+      if(periodo === mesActualPeriodo){
+        const folio = cell(facRows,r,2);
+        const dkey = folio+'|'+cliente+'|'+totalUsd;
+        if(seen.has(dkey)) continue;
+        seen.add(dkey);
+        const fechaCell = cell(facRows,r,1);
+        const fechaPagoCell = cell(facRows,r,8);
+        facturas_mes.push({
+          fecha: excelDateToJs(fechaCell),
+          folio: folio,
+          cliente: cliente,
+          total_usd: totalUsd,
+          mn: num(cell(facRows,r,7)),
+          fecha_pago: excelDateToJs(fechaPagoCell),
+          depositado_usd: num(cell(facRows,r,9)),
+          depositado_mn: num(cell(facRows,r,10)),
+          banco: cleanStr(cell(facRows,r,13))
+        });
+      }
+    }
+  }
+  const typical = {};
+  Object.keys(totalsByClient).forEach(k=>{
+    const arr = totalsByClient[k].slice().sort((a,b)=>a-b);
+    typical[k] = arr[Math.floor(arr.length/2)];
+  });
+
+  // ---------- clasificar bodegas (estado) y separar Constructora ----------
+  function estadoDe(b){
+    const up = b.cliente.toUpperCase();
+    if(up.includes('CANCELAD')) return 'amarillo';
+    if(!b.monto || b.monto===0) return 'verde';
+    const t = typical[normName(b.cliente)];
+    if(t && t>0 && (b.monto/t) > 1.6) return 'atrasado';
+    return 'mes_en_curso';
+  }
+  const otros_ingresos = [];
+  const bodegas = [];
+  bodegasRaw.forEach(b=>{
+    if(b.cliente.toUpperCase().includes('ALEX BERKO')){
+      otros_ingresos.push({...b, categoria:'Construcción'});
+    } else {
+      b.estado = estadoDe(b);
+      bodegas.push(b);
+    }
+  });
+  const bodega_counts = {verde:0, mes_en_curso:0, atrasado:0, amarillo:0};
+  bodegas.forEach(b=>{ bodega_counts[b.estado] = (bodega_counts[b.estado]||0)+1; });
+
+  // ---------- ingresos resumen mes actual ----------
+  let pagado_mn=0, pendiente_mn=0, n_pagado=0, n_pendiente=0;
+  facturas_mes.forEach(f=>{
+    if(f.cliente.toUpperCase().includes('CANCELAD')) return;
+    if(f.fecha_pago){ pagado_mn += f.mn; n_pagado++; }
+    else { pendiente_mn += f.mn; n_pendiente++; }
+  });
+  const ingresos_resumen = {pagado_mn, pendiente_mn, n_pagado, n_pendiente, total_facturado_mn: pagado_mn+pendiente_mn};
+
+  // ---------- NOMINA: bloques ----------
+  const nomRows = sheetRows(wb, 'NOMINA 2026');
+  const nomina_blocks = [];
+  if(nomRows){
+    let i = 1;
+    while(i <= nomRows.length){
+      const titulo = cleanStr(cell(nomRows,i,3));
+      if(titulo && typeof titulo === 'string' && titulo.startsWith('NOMINA #')){
+        const periodo = cleanStr(cell(nomRows,i,7));
+        const empleados = [];
+        let j = i+2;
+        while(j <= nomRows.length){
+          const nombre = cell(nomRows,j,3);
+          if(!nombre || (typeof nombre==='string' && nombre.trim().startsWith('TOTAL'))) break;
+          if(typeof nombre==='string' && nombre.trim() && nombre.trim()!=='NOMBRE'){
+            empleados.push({
+              nombre: cleanStr(nombre),
+              dias: cell(nomRows,j,11), sem: cell(nomRows,j,12),
+              infonavit: cell(nomRows,j,13), total: num(cell(nomRows,j,14)),
+              depositos: num(cell(nomRows,j,15)), nota: cleanStr(cell(nomRows,j,16))
+            });
+          }
+          j++;
+        }
+        const total = num(cell(nomRows,j,14));
+        nomina_blocks.push({titulo, periodo, empleados, total});
+        i = j;
+      } else { i++; }
+      if(nomina_blocks.length >= 8) break;
+    }
+  }
+
+  // ---------- resumen anual ----------
+  const mesesConDatos = months2026.filter(m=>m.total_mn>0);
+  const total_mn = mesesConDatos.reduce((s,m)=>s+m.total_mn,0);
+  const total_usd = mesesConDatos.reduce((s,m)=>s+m.usd,0);
+  const n = mesesConDatos.length || 1;
+  const resumen_anual = {total_mn, total_usd, promedio_mn: total_mn/n, promedio_usd: total_usd/n, meses_contados: mesesConDatos.length};
+
+  return {
+    generado: new Date().toISOString(),
+    mes_actual: mesActualNombre,
+    months2026, posicion_general, semana_label, bodegas, pendientes,
+    facturas_julio: facturas_mes, nomina_blocks, otros_ingresos, resumen_anual,
+    ingresos_resumen, bodega_counts
+  };
+}
+
+/* ---- recordar la última carga manual (localStorage del propio navegador) ---- */
+const LS_KEY = 'delgra_dashboard_data_v1';
+function saveLocalData(data){
+  try{
+    localStorage.setItem(LS_KEY, JSON.stringify({data, savedAt: new Date().toISOString()}));
+  } catch(e){ console.warn('No se pudo guardar localmente:', e); }
+}
+function loadLocalData(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw); // {data, savedAt}
+  } catch(e){ return null; }
+}
+
+/* ---- flujo principal de sincronización ---- */
+async function init(){
+  setSyncStatus('loading', 'Conectando con el Excel…');
+  try{
+    const wb = await fetchOneDriveWorkbook(ONEDRIVE_SHARE_URL);
+    const parsed = parseWorkbookToData(wb);
+    DATA = parsed;
+    renderAll();
+    saveLocalData(parsed);
+    setSyncStatus('ok', 'Conectado en vivo · actualizado ' + new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}));
+  } catch(err){
+    console.error('OneDrive fetch failed:', err);
+    const cached = loadLocalData();
+    if(cached){
+      DATA = cached.data;
+      renderAll();
+      const when = new Date(cached.savedAt).toLocaleString('es-MX',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      setSyncStatus('err', 'Sin conexión en vivo. Mostrando tu última carga manual (' + when + ').');
+    } else {
+      setSyncStatus('err', 'No se pudo conectar en vivo (' + err.message + '). Mostrando el snapshot original.');
+    }
+  }
+}
+
+/* ---- carga manual de respaldo ---- */
+document.getElementById('manualFile').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  setSyncStatus('loading', 'Leyendo archivo…');
+  try{
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array', cellDates:true});
+    DATA = parseWorkbookToData(wb);
+    renderAll();
+    saveLocalData(DATA);
+    setSyncStatus('ok', 'Datos cargados manualmente · ' + new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}));
+  } catch(err){
+    console.error('Manual parse failed:', err);
+    setSyncStatus('err', 'No se pudo leer ese archivo (' + err.message + ')');
+  }
+});
+</script>
+</body>
+</html>
